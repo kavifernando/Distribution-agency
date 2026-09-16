@@ -1,0 +1,116 @@
+// This is your Prisma schema file.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// 1. Inventory Model (Products)
+model Product {
+  id           Int           @id @default(autoincrement())
+  name         String
+  description  String?
+  price        Float
+  stock        Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  invoiceItems InvoiceItem[]
+}
+
+// 2. Route Model (Geographical area)
+model Route {
+  id         Int      @id @default(autoincrement())
+  name       String
+  driverName String?
+  vehicle    String?
+  status     String   @default("Preparing")
+  progress   Int      @default(0)
+  shops      Shop[]
+  createdAt  DateTime @default(now())
+}
+
+// 3. Shop / Retailer Model
+model Shop {
+  id             Int       @id @default(autoincrement())
+  name           String
+  ownerName      String
+  contactNumber  String
+  address        String
+  creditLimit    Float     @default(10000.0)
+  outstandingBal Float     @default(0.0)
+  routeId        Int?
+  route          Route?    @relation(fields: [routeId], references: [id])
+  payments       Payment[]
+  createdAt      DateTime  @default(now())
+  invoices       Invoice[]
+}
+
+// 4. Payments Model
+model Payment {
+  id           Int       @id @default(autoincrement())
+  amount       Float
+  paymentDate  DateTime  @default(now())
+  method       String    // Cash, Cheque, Bank Transfer
+  shopId       Int
+  shop         Shop      @relation(fields: [shopId], references: [id])
+  
+  // Cheque Specific Fields
+  chequeNumber String?
+  bankName     String?
+  realizeDate  DateTime?
+  status       String    @default("Completed") // "Completed", "Pending", "Bounced"
+}
+
+// 5. Invoice (Sales) Model
+model Invoice {
+  id          Int           @id @default(autoincrement())
+  totalAmount Float
+  paymentType String // "Credit", "Cash", "Cheque"
+  createdAt   DateTime      @default(now())
+  shopId      Int
+  shop        Shop          @relation(fields: [shopId], references: [id])
+  items       InvoiceItem[]
+}
+
+model InvoiceItem {
+  id        Int     @id @default(autoincrement())
+  quantity  Int
+  price     Float
+  invoiceId Int
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+// 7. Supplier (Company) Model
+model Company {
+  id        Int              @id @default(autoincrement())
+  name      String           @unique
+  createdAt DateTime         @default(now())
+  invoices  CompanyInvoice[]
+}
+
+// 8. Company Invoice (Accounts Payable)
+model CompanyInvoice {
+  id           Int      @id @default(autoincrement())
+  invoiceNo    String
+  amount       Float
+  dateReceived DateTime @default(now())
+  dueDate      DateTime
+  status       String   @default("Unpaid") // "Unpaid", "Paid"
+  companyId    Int
+  company      Company  @relation(fields: [companyId], references: [id])
+}
+
+// 9. Business Expenses Model
+model Expense {
+  id          Int      @id @default(autoincrement())
+  description String
+  category    String   // e.g. "Fuel", "Salary", "Utilities", "Other"
+  amount      Float
+  date        DateTime @default(now())
+}
